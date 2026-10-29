@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가위바위보!</title>
+<meta name="description" content="웹캠으로 내 손을 읽는 가위바위보. UNO 신호등 LED가 이김·비김·짐을 알려 줍니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body data-page="game">
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header class="top">
+  <h1>가위바위보!</h1>
+  <nav aria-label="페이지 이동">
+    <ul>
+      <li><a href="index.html" aria-current="page">게임하기</a></li>
+      <li><a href="setup.html">장치 연결</a></li>
+      <li><a href="a11y.html">접근성</a></li>
+    </ul>
+  </nav>
+</header>
+
+<div id="banner" class="banner" role="alert" hidden></div>
+
+<main id="main" tabindex="-1">
+
+<section id="game" aria-labelledby="h-game">
+  <h2 id="h-game">가위바위보!</h2>
+  <p>상대 손이 빠르게 돌아가다가 <strong>"가위! 바위! 보!"</strong> 하면 <strong>3초 안에</strong> 내 손을 내세요. 손 모양을 0.4초 유지하면 확정되고, 그 순간 상대 손이 공개됩니다.</p>
+  <p class="device-strip" aria-label="장치 연결 상태">
+    웹캠 <span id="c-cam"></span> · 손 인식 <span id="c-model"></span> · 아두이노 <span id="c-board"></span> ·
+    <a href="setup.html">장치 연결하기 →</a>
+    <button id="btn-demo-off" type="button" class="secondary" hidden>데모 모드 끄기</button>
+  </p>
+
+  <div class="card stage">
+    <div class="actions stage-actions">
+      <button id="btn-start" type="button">시작</button>
+      <button id="btn-stop" type="button" class="secondary" disabled>정지</button>
+    </div>
+    <p id="outcome" class="shout" data-outcome="idle">시작 버튼을 누르세요.</p>
+    <div class="versus">
+      <div class="side">
+        <h3>나 (웹캠)</h3>
+        <div class="cam">
+          <video id="vid" muted playsinline aria-label="웹캠 실시간 영상. 인식한 손 관절이 점으로 표시됩니다." hidden></video>
+          <canvas id="overlay" width="640" height="480" aria-hidden="true" hidden></canvas>
+          <p id="cam-msg" class="cam-msg"><span id="cam-msg-text">웹캠이 꺼져 있습니다</span> <a href="setup.html">장치 연결 페이지에서 켜기</a></p>
+        </div>
+        <div class="actions">
+          <button id="btn-cam" type="button">웹캠 켜기</button>
+        </div>
+        <p id="my-hand" class="hand">—</p>
+        <p class="small"><strong>손 인식 상태:</strong> <span id="recog">웹캠 없음</span></p>
+      </div>
+
+      <div class="vs" aria-hidden="true">VS</div>
+
+      <div class="side">
+        <h3>상대</h3>
+        <div class="char3d" id="avatar" data-mood="idle">
+          <div class="char3d-card">
+            <img id="opp-img" alt="" hidden>
+            <div id="avatar-empty" class="char-empty"><span aria-hidden="true">❔</span><span>상대 이미지를<br>넣어 주세요</span></div>
+            <div id="spin-hand" class="spin-hand" aria-hidden="true" hidden></div>
+            <span class="gloss" aria-hidden="true"></span>
+          </div>
+          <span class="char3d-shadow" aria-hidden="true"></span>
+        </div>
+        <div class="actions">
+          <input id="img-file" type="file" accept="image/*" class="sr-only">
+          <label for="img-file" class="btn">상대 이미지 고르기</label>
+        </div>
+        <p id="opp-hand" class="hand">—</p>
+        <p class="muted small">이미지를 이 화면 위로 <strong>끌어다 놓거나</strong>, 복사한 이미지를 <kbd>Ctrl</kbd>+<kbd>V</kbd>로 <strong>붙여 넣어도</strong> 됩니다. 한 번 넣으면 이 브라우저에 저장됩니다.</p>
+      </div>
+    </div>
+
+    <dl class="stats">
+      <div><dt>라운드</dt><dd id="round">0 / 5</dd></div>
+      <div><dt>남은 시간</dt><dd id="timer">—</dd></div>
+      <div><dt>점수</dt><dd id="score">0 / 15</dd></div>
+    </dl>
+    <div class="meter-wrap">
+      <label for="hold">손 모양 유지 (0.4초 유지하면 확정)</label>
+      <progress id="hold" max="100" value="0">0%</progress>
+    </div>
+    <p class="muted small">점수: 이김 <strong>+3</strong> (🟢 초록) · 비김 <strong>+1</strong> (🟡 노랑) · 짐 또는 시간 초과 <strong>0</strong> (🔴 빨강)</p>
+  </div>
+
+  <details class="card" id="demo-box" hidden>
+    <summary>데모 조작 (데모 모드일 때)</summary>
+    <p class="muted">웹캠 없이 "내가 이 손을 냈다"고 가정합니다. "보!" 이후 0.4초 유지하면 확정됩니다.</p>
+    <div class="actions" id="demo-actions"></div>
+  </details>
+
+  <div class="card" id="board-card">
+    <h3>점수판</h3>
+    <p id="best" class="muted">최고 점수: 기록 없음</p>
+    <table>
+      <caption class="sr-only">게임별 총점 순위 (상위 5개)</caption>
+      <thead><tr><th scope="col">순위</th><th scope="col">총점</th><th scope="col">이긴 라운드</th><th scope="col">날짜</th></tr></thead>
+      <tbody id="board-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="result-card">
+    <h3>라운드 기록</h3>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="라운드별 기록 표">
+      <table>
+        <caption class="sr-only">라운드별 결과</caption>
+        <thead><tr><th scope="col">회차</th><th scope="col">내 손</th><th scope="col">상대 손</th><th scope="col">결과</th><th scope="col">점수</th></tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+    <button id="btn-clear" type="button" class="secondary">기록 지우기</button>
+  </div>
+
+  <details class="card">
+    <summary>설정</summary>
+    <div class="form">
+      <label for="limit">내는 시간 제한(초) — 기본 3초, 천천히 하려면 5~10초</label>
+      <input id="limit" type="number" min="2" max="10" value="3" inputmode="numeric">
+      <label for="rounds">라운드 수</label>
+      <input id="rounds" type="number" min="1" max="10" value="5" inputmode="numeric">
+      <label class="check"><input id="sound" type="checkbox" checked> 효과음 켜기</label>
+      <label class="check"><input id="music" type="checkbox" checked> BGM 켜기 ("가위! 바위! 보!" 박자에 맞춘 기본 BGM, 직접 합성한 곡)</label>
+      <fieldset>
+        <legend>내 노래로 바꾸기 (선택)</legend>
+        <label for="song-file">노래 파일 고르기 (mp3 등)</label>
+        <input id="song-file" type="file" accept="audio/*">
+        <p id="song-status" class="muted small" role="status">선택한 파일 없음 — 기본 BGM을 씁니다.</p>
+        <label for="song-start">노래 시작 위치(초)</label>
+        <input id="song-start" type="number" min="0" max="3600" value="33" inputmode="numeric">
+        <label for="song-len">재생 길이(초) — "보!"가 나오는 순간까지의 길이</label>
+        <input id="song-len" type="number" min="2" max="10" value="4" inputmode="numeric">
+        <button id="song-clear" type="button" class="secondary">노래 파일 지우기</button>
+      </fieldset>
+      <fieldset>
+        <legend>상대 이미지</legend>
+        <p id="img-status" class="muted small" role="status">아직 고른 이미지가 없습니다.</p>
+        <button id="img-clear" type="button" class="secondary">이미지 지우기</button>
+      </fieldset>
+      <p class="muted small">고른 파일은 <strong>이 컴퓨터의 이 브라우저에만 저장</strong>되고 인터넷에 올라가지 않습니다. 저작권이 있는 노래·이미지는 개인·수업 시연 범위에서만 쓰세요.</p>
+    </div>
+  </details>
+</section>
+
+</main>
+
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<footer><p>가위바위보! · 피지컬AI 실습 · 손 인식은 MediaPipe Hands 근사값이며 조명·각도에 따라 틀릴 수 있습니다.</p></footer>
+</body>
+</html>

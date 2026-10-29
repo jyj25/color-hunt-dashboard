@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>장치 연결 · 가위바위보!</title>
+<meta name="description" content="가위바위보! 게임에 쓰는 웹캠과 아두이노(UNO)를 연결하고 시험하는 페이지.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body data-page="setup">
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+
+<header class="top">
+  <h1>가위바위보!</h1>
+  <nav aria-label="페이지 이동">
+    <ul>
+      <li><a href="index.html">게임하기</a></li>
+      <li><a href="setup.html" aria-current="page">장치 연결</a></li>
+      <li><a href="a11y.html">접근성</a></li>
+    </ul>
+  </nav>
+</header>
+
+<div id="banner" class="banner" role="alert" hidden></div>
+
+<main id="main" tabindex="-1">
+
+<section aria-labelledby="h-setup">
+  <h2 id="h-setup">장치 연결</h2>
+  <p>여기서 <strong>한 번만 허용</strong>해 두면, 게임 페이지가 같은 브라우저에서 웹캠과 아두이노를 <strong>자동으로 다시 연결</strong>합니다. 장치가 없으면 아래 <a href="#demo">데모 모드</a>를 쓰세요.</p>
+  <p><a class="btn" href="index.html">게임하러 가기 →</a></p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>1. 웹캠</h3>
+      <div class="cam">
+        <video id="vid" muted playsinline aria-label="웹캠 실시간 영상. 인식한 손 관절이 점으로 표시됩니다." hidden></video>
+        <canvas id="overlay" width="640" height="480" aria-hidden="true" hidden></canvas>
+        <p id="cam-msg" class="cam-msg"><span id="cam-msg-text">웹캠을 켜지 않았습니다</span></p>
+      </div>
+      <div class="actions">
+        <button id="btn-cam" type="button">웹캠 켜기</button>
+      </div>
+      <dl class="stats">
+        <div><dt>웹캠</dt><dd id="c-cam">확인 중</dd></div>
+        <div><dt>손 인식 모델</dt><dd id="c-model">대기</dd></div>
+      </dl>
+      <p class="small"><strong>손 인식 상태:</strong> <span id="recog">웹캠 없음</span></p>
+      <p class="muted small">가위=검지·중지만 펴기, 바위=모두 접기, 보=손가락 4개 모두 펴기. 손바닥(또는 손등)이 화면을 향하게 하고 밝은 곳에서 하세요. 손 인식 모델은 인터넷에서 불러옵니다(처음 몇 초).</p>
+    </div>
+
+    <div class="card">
+      <h3>2. 아두이노(UNO)</h3>
+      <div class="actions">
+        <button id="btn-serial" type="button">UNO 연결</button>
+      </div>
+      <dl class="stats">
+        <div><dt>보드(시리얼)</dt><dd id="c-board">확인 중</dd></div>
+        <div><dt>보드 응답 경과</dt><dd id="age">—</dd></div>
+      </dl>
+      <p id="signal" class="signal">신호 미확인</p>
+      <p class="muted small">보드가 보고한 프로그램 출력 상태입니다. 실제 LED가 켜졌는지는 눈으로 확인합니다.</p>
+      <h4>LED 시험</h4>
+      <div class="actions">
+        <button id="t-win" type="button" class="secondary">🟢 이김</button>
+        <button id="t-draw" type="button" class="secondary">🟡 비김</button>
+        <button id="t-lose" type="button" class="secondary">🔴 짐</button>
+        <button id="t-off" type="button" class="secondary">⚫ 끄기</button>
+      </div>
+      <dl class="stats">
+        <div><dt>최근 명령</dt><dd id="cmdstate">없음</dd></div>
+        <div><dt>보드 판정</dt><dd id="verdict">—</dd></div>
+        <div><dt>마지막 키패드 입력</dt><dd id="lastkey">—</dd></div>
+      </dl>
+      <p class="muted small">Chrome 또는 Edge에서만 UNO 연결(Web Serial)이 됩니다. Arduino IDE의 시리얼 모니터가 열려 있으면 닫아야 합니다.</p>
+    </div>
+  </div>
+
+  <div class="card" id="demo">
+    <h3>3. 데모 모드 (장치 없이 해 보기)</h3>
+    <p class="muted">웹캠과 아두이노 없이 화면 동작만 확인합니다. 켜 두면 게임 페이지에서도 데모로 동작합니다(이 탭을 닫으면 꺼집니다).</p>
+    <div class="actions">
+      <button id="btn-demo" type="button" class="secondary" aria-pressed="false">데모 모드</button>
+    </div>
+  </div>
+</section>
+
+<section id="arduino" aria-labelledby="h-ard">
+  <h2 id="h-ard">아두이노(UNO) 준비</h2>
+  <ol>
+    <li>아래 <a href="#wiring">연결 표</a>대로 LED 3개를 연결합니다 (USB는 분리한 상태로). 키패드는 쓰지 않습니다.</li>
+    <li>Arduino IDE에서 <a href="firmware/RPS/RPS.ino" download>RPS.ino</a> 파일 하나를 <code>RPS</code> 폴더에 넣고 엽니다(폴더 이름과 파일 이름이 같아야 합니다). 추가 라이브러리는 필요 없습니다.</li>
+    <li>보드는 "Arduino Uno", 포트는 실제 COM(예: COM3)을 고르고 <strong>업로드</strong>합니다.</li>
+    <li>시리얼 모니터(<strong>115200</strong>, 줄 끝 "새 줄")에서 <code>1 STATUS</code>, <code>2 JUDGE 1 0</code>(바위 vs 가위 → 이김, 초록 LED), <code>3 SIGNAL 0</code>을 보내 LED가 켜지는지 확인한 뒤 <strong>시리얼 모니터를 닫습니다</strong>.</li>
+    <li>위의 <strong>UNO 연결</strong>을 눌러 포트를 선택하고, <strong>LED 시험</strong> 버튼으로 세 색이 켜지는지 확인합니다.</li>
+  </ol>
+  <p class="muted"><strong>심판은 아두이노입니다.</strong> 웹이 두 손을 <code>JUDGE 내손 상대손</code>(가위0 바위1 보2, 내 손 3=못 냄)으로 보내면 보드가 승패를 계산해 LED를 켜고, 결과를 JSON으로 돌려줍니다. 🟢 초록 = 이김, 🟡 노랑 = 비김, 🔴 빨강 = 짐(시간 초과 포함). 라운드 중에는 모두 꺼져 있습니다.</p>
+</section>
+
+<section id="wiring" aria-labelledby="h-wiring">
+  <h2 id="h-wiring">LED 연결 (신호등 3개)</h2>
+  <p>USB를 분리하고 연결하세요. LED는 긴 다리가 +, 짧은 다리가 −입니다. <strong>LED마다 저항(1kΩ)이 꼭 필요합니다.</strong></p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="LED 연결 표">
+    <table>
+      <caption>현재 배선 (펌웨어 핀: 초록 D3, 노랑 D4, 빨강 D5)</caption>
+      <thead><tr><th scope="col">LED</th><th scope="col">의미</th><th scope="col">LED − (짧은 다리)</th><th scope="col">LED + (긴 다리)</th><th scope="col">UNO 신호 핀</th></tr></thead>
+      <tbody>
+        <tr><td>🟢 초록</td><td>이김</td><td>빵판 D6</td><td>빵판 D7</td><td>D3</td></tr>
+        <tr><td>🟡 노랑</td><td>비김</td><td>빵판 D13</td><td>빵판 D14</td><td>D4</td></tr>
+        <tr><td>🔴 빨강</td><td>짐 · 시간 초과</td><td>빵판 D21</td><td>빵판 D22</td><td>D5</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>UNO 신호 핀(D3·D4·D5)은 저항을 거쳐 각 LED의 <strong>+ 쪽 줄(7, 14, 22번 줄)</strong>로 가야 합니다.</li>
+    <li>각 LED의 <strong>− 쪽 줄(6, 13, 21번 줄)</strong>은 UNO <strong>GND</strong>로 이어져야 합니다.</li>
+    <li>UNO D0·D1(USB 통신 핀)은 비워 둡니다.</li>
+  </ul>
+  <p class="small muted">빵판은 같은 숫자 줄의 A~E 5칸, F~J 5칸이 각각 이어져 있습니다. 저항과 GND 선의 정확한 위치는 각자의 배선에 따라 다르므로, 위 세 가지 조건(신호→저항→+ / − → GND)을 확인하세요.</p>
+</section>
+
+</main>
+
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<footer><p>가위바위보! · 피지컬AI 실습 · 장치 연결 페이지</p></footer>
+</body>
+</html>
